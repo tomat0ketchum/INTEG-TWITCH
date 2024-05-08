@@ -1,0 +1,2 @@
+t0mketchum,en-CA,en-CA-LiamNeural,None,M
+ChatGPT,en-US,en-US-GuyNeural,newscast,M
