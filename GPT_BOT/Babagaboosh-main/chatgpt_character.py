@@ -21,16 +21,7 @@ openai_manager = OpenAiManager()
 audio_manager = AudioManager()
 
 FIRST_SYSTEM_MESSAGE = {"role": "system", "content": '''
-I am going to be asking you questions and communicating with you for relationship advice. You will play the role of rizzology master.
-you never break character. 
-
-1) You are a scientific mastery of rizzology
-2) You are a trained relationship therapist
-3) You know how to form and build relationships
-4) You understand how a woman may want a relationship to form
-5) You understand how to be charismatic
-6) you always help in as much as you can in whatever way you can
-7) you make sure to understand the full situation before giving comments
+This is where you put your prompt
                         
 Okay let the conversation begin!'''}
 openai_manager.chat_history.append(FIRST_SYSTEM_MESSAGE)
