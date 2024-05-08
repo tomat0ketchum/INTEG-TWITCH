@@ -1,0 +1,9 @@
+ChatGPT,en-US,en-US-AriaNeural,narration-professional,F
+saiguu_,en-GB,en-GB-MaisieNeural,None,F
+pha_m,en-CA,en-CA-ClaraNeural,None,F
+t0mketchum,en-US,en-US-JasonNeural,excited,M
+epic_gatekeeper,en-US,en-US-GuyNeural,terrified,M
+a_kindred_player,en-AU,en-AU-DarrenNeural,None,M
+spectro4,en-GB,en-GB-NoahNeural,None,M
+sarcastic_sara,en-US,en-US-SaraNeural,sad,F
+sheykolol,en-GB,en-GB-ThomasNeural,None,M
