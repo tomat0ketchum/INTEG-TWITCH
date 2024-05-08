@@ -3,12 +3,25 @@ import tiktoken
 import os
 from rich import print
 from dotenv import load_dotenv
-import queue
 
+# Most Code handling prompt and messages taken from DougDoug's available code
 
 env_path = os.path.join(os.path.dirname(__file__), 'EnvKeys', '.env')
 load_dotenv(env_path)
 load_dotenv()
+
+
+def ensure_chatlogs_directory_exists():
+    chatlogs_dir = 'ChatLogs'
+    if not os.path.exists(chatlogs_dir):
+        os.makedirs(chatlogs_dir)
+
+
+def write_response_to_file(response):
+    ensure_chatlogs_directory_exists()
+    file_path = 'ChatLogs/CHATGPT_RESPONSE_1'
+    with open(file_path, 'w', encoding='utf-8') as file:
+        file.write(response)
 
 
 def num_tokens_from_messages(messages, model='gpt-4'):
@@ -32,8 +45,7 @@ def num_tokens_from_messages(messages, model='gpt-4'):
 
 class OpenAiManager:
 
-    def __init__(self, message_queue):
-        self.message_queue = message_queue
+    def __init__(self):
         self.chat_history = []  # Stores the entire conversation
         try:
             self.client = OpenAI(api_key=os.environ['OPENAI_API_KEY'])
@@ -61,6 +73,7 @@ class OpenAiManager:
         # Process the answer
         openai_answer = completion.choices[0].message.content
         print(f"[green]\n{openai_answer}\n")
+        write_response_to_file(openai_answer)
         return openai_answer
 
     # Asks a question that includes the full conversation history
@@ -91,12 +104,12 @@ class OpenAiManager:
         # Process the answer
         openai_answer = completion.choices[0].message.content
         print(f"[green]\n{openai_answer}\n")
-        self.message_queue.put(openai_answer)
+        write_response_to_file(openai_answer)
         return openai_answer
 
     def main(self):
 
-        openai_manager = OpenAiManager(self.message_queue)
+        openai_manager = OpenAiManager()
 
         # CHAT TEST
         chat_without_history = openai_manager.chat("Hey ChatGPT say that you're ready")
@@ -120,3 +133,4 @@ class OpenAiManager:
 
 if __name__ == '__main__':
     OpenAiManager().main()
+
