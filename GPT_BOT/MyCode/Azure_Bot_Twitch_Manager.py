@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 import azure.cognitiveservices.speech as speechsdk
 from collections import Counter
 from Azure_Voice_List import AzureVoiceList
+from obs_websockets import OBSWebsocketsManager
 
 
 def get_user(line):
@@ -21,6 +22,12 @@ def create_ssml_emotions(voice_region, voice_name, style, text):
             f'/2001/mstts" xml:lang="{voice_region}"><voice name="{voice_name}"><mstts:express-as '
             f'style="{style}">{text}'
             f'</mstts:express-as></voice></speak>')
+
+
+def write_response_to_file(response):
+    file_path = 'ChatLogs/Question_For_Beta'
+    with open(file_path, 'w', encoding='utf-8') as file:
+        file.write(response)
 
 
 def create_small_ssml(voice_region, voice_name, text):
@@ -227,24 +234,27 @@ class AzureBotTwitchManager:
     synthesis_lock = threading.Lock()
 
     def check_file(self):
+        obswebsockets_manager = OBSWebsocketsManager()
         last_mod_time = 0.0  # Initialize as 0.0 to handle initial case
         file_path = 'ChatLogs/CHATGPT_RESPONSE_1'
         while True:
             time.sleep(0.5)
             if os.path.exists(file_path):
                 current_mod_time = os.path.getmtime(file_path)
+                obswebsockets_manager.set_source_visibility("In Game", "Pajama Sam", True)
                 if current_mod_time > last_mod_time:  # Explicitly use last_mod_time in the comparison
                     with open(file_path, 'r', encoding='utf-8') as file:
                         text = file.read().strip()
                         if text:
                             print(f"Reading from file: {text}")
                             voice_region = 'en-US'
-                            voice_name = 'en-US-GuyNeural'
-                            style = 'newscast'
+                            voice_name = 'en-US-AriaNeural'
+                            style = 'narration-professional'
                             ssml = create_ssml_emotions(voice_region, voice_name, style, text)
                             with self.synthesis_lock:
                                 synthesize_emotion_with_ssml(text, ssml)
                     os.remove(file_path)
+                    obswebsockets_manager.set_source_visibility("In Game", "Pajama Sam", False)
                     print(f"Deleted file: {file_path}")
                     last_mod_time = current_mod_time  # Update last_mod_time after processing
 
@@ -259,7 +269,8 @@ class AzureBotTwitchManager:
         allowed_repeats = ["O", "o", ".", "?", "m", "h"]
         max_word_length = 20
         allowed_words = ["Incomprehensibilities", "Supercalifragilisticexpialidocious", "<3", "the", "of", "a", "o",
-                         "O", ".", "..", "..."]
+                         "O", ".", "..", "...", "beta", "B", "b", "Beta"]
+        beta_call = ["beta", "Beta"]
 
         while True:
             time.sleep(0.5)  # Sleep to reduce CPU usage
@@ -308,6 +319,10 @@ class AzureBotTwitchManager:
                     save_user_txt_files(user, message)  # optional recording of messages for Korie.
                     if first_message:
                         save_user_voice_mappings(user_voices=user_voices)  # Save updates if it's the first message
+                    if any(message.startswith(start_2) for start_2 in beta_call):
+                        formatted_message = f"This person in Twitch chat ({user}) says: {message}"
+                        write_response_to_file(formatted_message)
+
 
     def ask_user_m_or_f(self, user, user_prompt_status):
         self.send_message(
@@ -333,6 +348,3 @@ class AzureBotTwitchManager:
 if __name__ == "__main__":
     bot_manager = AzureBotTwitchManager()
     bot_manager.main()
-
-#     bot_manager = AzureBotTwitchManager()
-#     bot_manager.main()
