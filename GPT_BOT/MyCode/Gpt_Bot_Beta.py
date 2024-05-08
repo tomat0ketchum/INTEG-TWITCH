@@ -3,8 +3,12 @@ import tiktoken
 import os
 from rich import print
 from dotenv import load_dotenv
+import keyboard
+from azure_speech_to_text import SpeechToTextManager
+import time
+import threading
 
-# Most Code handling prompt and messages taken from DougDoug's available code
+
 
 env_path = os.path.join(os.path.dirname(__file__), 'EnvKeys', '.env')
 load_dotenv(env_path)
@@ -24,7 +28,7 @@ def write_response_to_file(response):
         file.write(response)
 
 
-def num_tokens_from_messages(messages, model='gpt-4'):
+def num_tokens_from_messages(messages, model='gpt-3.5-turbo'):
     """Returns the number of tokens used by a list of messages.
     Copied with minor changes from: https://platform.openai.com/docs/guides/chat/managing-tokens """
     try:
@@ -44,7 +48,6 @@ def num_tokens_from_messages(messages, model='gpt-4'):
 
 
 class OpenAiManager:
-
     def __init__(self):
         self.chat_history = []  # Stores the entire conversation
         try:
@@ -60,13 +63,13 @@ class OpenAiManager:
 
         # Check that the prompt is under the token context limit
         chat_question = [{"role": "user", "content": prompt}]
-        if num_tokens_from_messages(chat_question) > 8000:
+        if num_tokens_from_messages(chat_question) > 4000:
             print("The length of this chat question is too large for the GPT model")
             return
 
         print("[yellow]\nAsking ChatGPT a question...")
         completion = self.client.chat.completions.create(
-            model="gpt-4",
+            model="gpt-3.5-turbo",
             messages=chat_question
         )
 
@@ -77,7 +80,27 @@ class OpenAiManager:
         return openai_answer
 
     # Asks a question that includes the full conversation history
+    def check_file(self):
+        file_path = 'ChatLogs/Question_For_Beta'
+        try:
+            last_mod_time = getattr(self, 'last_mod_time', 0.0)  # Use an attribute to store last modification time
+            if os.path.exists(file_path):
+                current_mod_time = os.path.getmtime(file_path)
+                if current_mod_time > last_mod_time:
+                    with open(file_path, 'r', encoding='utf-8') as file:
+                        text = file.read().strip()
+                    if text:
+                        print(f"Reading from file: {text}")
+                        os.remove(file_path)
+                        print(f"Deleted file: {file_path}")
+                        last_mod_time = current_mod_time  # Update the last modification time
+                        return text
+        except Exception as e:
+            print(f"Error reading from file: {e}")
+        return None
+
     def chat_with_history(self, prompt=""):
+
         if not prompt:
             print("Didn't receive input!")
             return
@@ -93,7 +116,7 @@ class OpenAiManager:
 
         print("[yellow]\nAsking ChatGPT a question...")
         completion = self.client.chat.completions.create(
-            model="gpt-4",
+            model="gpt-3.5-turbo",
             messages=self.chat_history
         )
 
@@ -108,29 +131,64 @@ class OpenAiManager:
         return openai_answer
 
     def main(self):
-
         openai_manager = OpenAiManager()
 
         # CHAT TEST
-        chat_without_history = openai_manager.chat("Hey ChatGPT say that you're ready")
+        # chat_without_history = openai_manager.chat("Hey ChatGPT say that you're ready")
 
         # CHAT WITH HISTORY TEST
         FIRST_SYSTEM_MESSAGE = {"role": "system",
                                 "content": '''
-                                            Test
+SAY: "You haven't set a prompt" before you say anything else. 
     
                                            '''}
-        FIRST_USER_MESSAGE = {"role": "user",
-                              "content": "Who are you, and what is your goal? Please give me a 1 sentence background "
-                                         "on your coaching style"}
+        # FIRST_USER_MESSAGE = {"role": "user",
+        #                       "content": "Who are you, and what is your goal? Please give me a 1 sentence background "
+        #                                  "on your coaching style"}
+        speechtotext_manager = SpeechToTextManager()
+        BACKUP_FILE = "ChatHistoryBackup.txt"
+
         openai_manager.chat_history.append(FIRST_SYSTEM_MESSAGE)
-        openai_manager.chat_history.append(FIRST_USER_MESSAGE)
+        # openai_manager.chat_history.append(FIRST_USER_MESSAGE)
+
+
+        print("[green]Starting the loop, press F4 to begin")
+
+        def handle_file_check():
+            while True:
+                text_from_file = openai_manager.check_file()
+                if text_from_file:
+                    print(f"[yellow]Received from file: {text_from_file}")
+                    openai_manager.chat_with_history(text_from_file)
+
+        file_thread = threading.Thread(target=handle_file_check)
+        file_thread.daemon = True
+        file_thread.start()
 
         while True:
-            new_prompt = input("\nNext question? \n\n")
-            openai_manager.chat_with_history(new_prompt)
+
+            # Wait until user presses "f4" key
+            if keyboard.read_key() != "f4":
+                time.sleep(0.1)
+                continue
+
+            print("[green]User pressed F4 key! Now listening to your microphone:")
+
+            # Get question from mic
+            mic_result = speechtotext_manager.speechtotext_from_mic_continuous()
+
+            if mic_result == '':
+                print("[red]Did not receive any input from your microphone!")
+                continue
+
+            # Send question to OpenAi
+            openai_result = openai_manager.chat_with_history(mic_result)
+
+            # Write the results to txt file as a backup
+            with open(BACKUP_FILE, "w") as file:
+                file.write(str(openai_manager.chat_history))
+
 
 
 if __name__ == '__main__':
     OpenAiManager().main()
-
