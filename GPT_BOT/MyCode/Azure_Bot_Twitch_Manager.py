@@ -184,8 +184,7 @@ def save_user_txt_files(user, message):
 
 
 class AzureBotTwitchManager:
-    def __init__(self, message_queue):
-        self.message_queue = message_queue
+    def __init__(self):
         self.env_path = os.path.join(os.path.dirname(__file__), 'EnvKeys', '.env')
         load_dotenv(self.env_path)
 
@@ -225,6 +224,30 @@ class AzureBotTwitchManager:
             message = ""
         return message
 
+    synthesis_lock = threading.Lock()
+
+    def check_file(self):
+        last_mod_time = 0.0  # Initialize as 0.0 to handle initial case
+        file_path = 'ChatLogs/CHATGPT_RESPONSE_1'
+        while True:
+            time.sleep(0.5)
+            if os.path.exists(file_path):
+                current_mod_time = os.path.getmtime(file_path)
+                if current_mod_time > last_mod_time:  # Explicitly use last_mod_time in the comparison
+                    with open(file_path, 'r', encoding='utf-8') as file:
+                        text = file.read().strip()
+                        if text:
+                            print(f"Reading from file: {text}")
+                            voice_region = 'en-US'
+                            voice_name = 'en-US-GuyNeural'
+                            style = 'newscast'
+                            ssml = create_ssml_emotions(voice_region, voice_name, style, text)
+                            with self.synthesis_lock:
+                                synthesize_emotion_with_ssml(text, ssml)
+                    os.remove(file_path)
+                    print(f"Deleted file: {file_path}")
+                    last_mod_time = current_mod_time  # Update last_mod_time after processing
+
     def twitch(self):
         self.connect_to_twitch()
         self.join_channel()
@@ -239,7 +262,8 @@ class AzureBotTwitchManager:
                          "O", ".", "..", "..."]
 
         while True:
-            time.sleep(0.5)
+            time.sleep(0.5)  # Sleep to reduce CPU usage
+
             try:
                 readbuffer = self.irc.recv(1024).decode()
             except Exception as e:
@@ -279,27 +303,11 @@ class AzureBotTwitchManager:
                                               f"voice preference. Your response was not understood.\r\n")
                 else:
                     voice_details, first_message = get_or_assign_voice_id(user, user_voices, self.user_preferences)
-                    synthesize_message(user, message, user_voices, self.user_preferences)
+                    with self.synthesis_lock:
+                        synthesize_message(user, message, user_voices, self.user_preferences)
                     save_user_txt_files(user, message)  # optional recording of messages for Korie.
                     if first_message:
                         save_user_voice_mappings(user_voices=user_voices)  # Save updates if it's the first message
-
-            while not self.message_queue.empty():
-                chatgpt_message = self.message_queue.get()
-                print(f"Retrieved from queue: {chatgpt_message}")
-                user = "ChatGPT"  # Default user for messages from GPT
-                if user not in user_voices:
-                    # Assign a default voice or preferences
-                    preferred_gender = "Random"  # or "M" or "F"
-                    preferred_region = None  # or specific region string
-                    voice_details = AzureVoiceList.get_voice_by_preference(preferred_gender, preferred_region)
-                    if voice_details:
-                        user_voices[user] = (voice_details, True)
-                    else:
-                        print("No voices available for the preference.")
-                        continue  # Skip this message if no voice can be assigned
-                synthesize_message(user, chatgpt_message, user_voices, self.user_preferences)
-                save_user_txt_files(user, chatgpt_message)
 
     def ask_user_m_or_f(self, user, user_prompt_status):
         self.send_message(
@@ -310,13 +318,21 @@ class AzureBotTwitchManager:
     def main(self):
         t1 = threading.Thread(target=self.twitch, daemon=True)
         t1.start()
+
+        file_thread = threading.Thread(target=self.check_file)
+        file_thread.daemon = True
+        file_thread.start()
+
         try:
             while True:
                 time.sleep(1)
         except KeyboardInterrupt:
             print("Program exited by user")
 
-#
-# if __name__ == "__main__":
+
+if __name__ == "__main__":
+    bot_manager = AzureBotTwitchManager()
+    bot_manager.main()
+
 #     bot_manager = AzureBotTwitchManager()
 #     bot_manager.main()
