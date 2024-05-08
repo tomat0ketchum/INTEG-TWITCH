@@ -2,6 +2,11 @@ from Azure_Bot_Twitch_Manager import AzureBotTwitchManager
 from Gpt_Bot_Beta import OpenAiManager
 import threading
 import time
+from dotenv import load_dotenv
+import os
+
+env_path = os.path.join(os.path.dirname(__file__), 'EnvKeys', '.env')
+load_dotenv(env_path)
 
 
 def activate_thread_1():
@@ -30,4 +35,3 @@ if __name__ == "__main__":
             time.sleep(1)
     except KeyboardInterrupt:
         print("Program exited by user")
-
