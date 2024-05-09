@@ -175,21 +175,46 @@ class AzureVoiceList:
         ("en-US", "en-US-MonicaNeural", None, "F")  # Number = line -5, so line 175-5 = voice 170
     ]
 
+
+    @classmethod
+    def read_used_voices(cls):
+        used_voices = set()
+        try:
+            with open("user_voices_2.txt", "r") as file:
+                for line in file:
+                    parts = line.strip().split(',')
+                    if len(parts) > 2:
+                        used_voices.add(parts[2])  # Assuming the voice ID is the third item in each line
+        except FileNotFoundError:
+            print("File not found. Continuing without excluding any voices.")
+        return used_voices
+
     @classmethod
     def get_voice_by_preference(cls, gender_preference="RANDOM", region_preference=None):
-        # Filter voices based on gender and region preferences
+        used_voices = cls.read_used_voices()
+        # Filter voices based only on region preference and exclude used voices
         filtered_voices = [
             voice for voice in cls.voices
-            if (gender_preference == "RANDOM" or voice[3] == gender_preference)
-            and (region_preference is None or voice[0] == region_preference)]
+            if (region_preference is None or voice[0] == region_preference) and voice[1] not in used_voices
+        ]
+
         if not filtered_voices:
             raise ValueError("No available voices left for the specified preferences")
-        return random.choice(filtered_voices)
+
+        # If gender preference is RANDOM, select any voice from the filtered list
+        if gender_preference == "RANDOM":
+            return random.choice(filtered_voices)
+
+        # If gender preference is not RANDOM, further filter by gender
+        gender_filtered_voices = [voice for voice in filtered_voices if voice[3] == gender_preference]
+        if not gender_filtered_voices:
+            raise ValueError("No available voices match the specified gender preference")
+
+        return random.choice(gender_filtered_voices)
 
 
-
-
-    # Your code should consider each letter in the string at a time.
-    # Keep track of the current index; you can do this with enumerate()
-    # or manually. To check if a letter is uppercase, you can use the .isupper() method,
-    # or use the in operator to see if the letter is in "ABCD..XYZ".
+# Example usage:
+selector = AzureVoiceList()
+print(selector.get_voice_by_preference())  # Random gender, any region
+print(selector.get_voice_by_preference(gender_preference="M"))  # Male voice, any region
+print(selector.get_voice_by_preference(gender_preference="F", region_preference="en-US"))  # Female voice, US region
