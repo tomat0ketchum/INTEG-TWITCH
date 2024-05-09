@@ -270,7 +270,7 @@ class AzureBotTwitchManager:
         max_word_length = 20
         allowed_words = ["Incomprehensibilities", "Supercalifragilisticexpialidocious", "<3", "the", "of", "a", "o",
                          "O", ".", "..", "...", "beta", "B", "b", "Beta"]
-        beta_call = ["beta", "Beta"]
+        beta_call = ["beta", "Beta", "BETA", "Beta,", "beta,"]
 
         while True:
             time.sleep(0.5)  # Sleep to reduce CPU usage
