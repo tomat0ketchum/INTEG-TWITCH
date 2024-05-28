@@ -85,8 +85,8 @@ def extract_preference_from_message(message):
         return "M"
     elif "f " in normalized_message or normalized_message.startswith("f"):
         return "F"
-    elif "random" in normalized_message:
-        return "Random"
+    elif "" in normalized_message:
+        return "R"
     return None
 
 
@@ -236,7 +236,9 @@ class AzureBotTwitchManager:
     def check_file(self):
         obswebsockets_manager = OBSWebsocketsManager()
         last_mod_time = 0.0  # Initialize as 0.0 to handle initial case
+        last_mod_time_one = 0.0
         file_path = 'ChatLogs/CHATGPT_RESPONSE_1'
+        file_path_2 = 'ChatLogs/CHATGPT_RESPONSE_2'
         while True:
             time.sleep(0.5)
             if os.path.exists(file_path):
@@ -257,6 +259,24 @@ class AzureBotTwitchManager:
                     obswebsockets_manager.set_source_visibility("In Game", "Pajama Sam", False)
                     print(f"Deleted file: {file_path}")
                     last_mod_time = current_mod_time  # Update last_mod_time after processing
+            if os.path.exists(file_path_2):
+                current_mod_time_2 = os.path.getmtime(file_path_2)
+                obswebsockets_manager.set_source_visibility("In Game", "Pajama Sam", True)
+                if current_mod_time_2 > last_mod_time_one:  # Explicitly use last_mod_time in the comparison
+                    with open(file_path_2, 'r', encoding='utf-8') as file:
+                        text = file.read().strip()
+                        if text:
+                            print(f"Reading from file: {text}")
+                            voice_region = 'en-US'
+                            voice_name = 'en-US-AriaNeural'
+                            style = 'narration-professional'
+                            ssml = create_ssml_emotions(voice_region, voice_name, style, text)
+                            with self.synthesis_lock:
+                                synthesize_emotion_with_ssml(text, ssml)
+                    os.remove(file_path_2)
+                    obswebsockets_manager.set_source_visibility("In Game", "Pajama Sam", False)
+                    print(f"Deleted file: {file_path_2}")
+                    last_mod_time_one = current_mod_time_2  # Update last_mod_time after processing
 
     def twitch(self):
         self.connect_to_twitch()
