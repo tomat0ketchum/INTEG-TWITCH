@@ -1,5 +1,5 @@
 from Azure_Bot_Twitch_Manager import AzureBotTwitchManager
-from Gpt_Bot_Beta import OpenAiManager
+from Two_Bots import OpenAiManager
 import threading
 import time
 from dotenv import load_dotenv
@@ -17,6 +17,7 @@ def activate_thread_1():
         time.sleep(1)
 
 
+
 def activate_thread_2():
     openai_manager = OpenAiManager()
     openai_manager.main()
@@ -28,10 +29,14 @@ def activate_thread_2():
 if __name__ == "__main__":
     t1 = threading.Thread(target=activate_thread_1, daemon=True)
     t2 = threading.Thread(target=activate_thread_2, daemon=True)
+
     t1.start()
     t2.start()
+
     try:
         while True:
             time.sleep(1)
     except KeyboardInterrupt:
         print("Program exited by user")
+
+
